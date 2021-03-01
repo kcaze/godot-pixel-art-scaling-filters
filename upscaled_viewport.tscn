@@ -1,0 +1,14 @@
+[gd_scene load_steps=4 format=2]
+
+[ext_resource path="res://upscaled_viewport.gd" type="Script" id=1]
+[ext_resource path="res://shaders/2xbr.tres" type="Material" id=2]
+
+[sub_resource type="ImageTexture" id=1]
+flags = 0
+flags = 0
+
+[node name="upscaled_viewport" type="Sprite"]
+material = ExtResource( 2 )
+texture = SubResource( 1 )
+centered = false
+script = ExtResource( 1 )

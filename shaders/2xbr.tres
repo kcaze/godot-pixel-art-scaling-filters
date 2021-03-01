@@ -1,0 +1,142 @@
+[gd_resource type="ShaderMaterial" load_steps=3 format=2]
+
+[sub_resource type="Shader" id=1]
+code = "// Shader implementation based off of https://github.com/carlosascari/2xBR-Filter
+
+shader_type canvas_item;
+
+uniform sampler2D viewport_texture;
+uniform float dispersion = 1f;
+
+const float Y_WEIGHT = 48.;
+const float U_WEIGHT = 7.;
+const float V_WEIGHT = 6.;
+float d(vec4 A, vec4 B) {
+	float r = abs(A.r - B.r);
+	float g = abs(A.g - B.g);
+	float b = abs(A.b - B.b);
+	float y = r *  .299000 + g *  .587000 + b *  .114000;
+	float u = r * -.168736 + g * -.331264 + b *  .500000;
+	float v = r *  .500000 + g * -.418688 + b * -.081312;
+	return (y * Y_WEIGHT) + (u * U_WEIGHT ) + (v * V_WEIGHT);
+}
+
+void fragment() {
+	int sx = int(floor((UV/TEXTURE_PIXEL_SIZE).x));
+	int sy = int(floor((UV/TEXTURE_PIXEL_SIZE).y));
+	vec2 uv = UV;
+	if (sx % 2 == 0) {
+		uv.x += TEXTURE_PIXEL_SIZE.x/2f;
+	} else {
+		uv.x -= TEXTURE_PIXEL_SIZE.x/2f;
+	}
+	if (sy%2 == 0) {
+		uv.y += TEXTURE_PIXEL_SIZE.y/2f;
+	} else {
+		uv.y -= TEXTURE_PIXEL_SIZE.y/2f;
+	}
+	vec2 res = TEXTURE_PIXEL_SIZE*2f;
+	
+	vec4 m00 = texture(viewport_texture, uv + vec2(-1f, -2f)*res);
+	vec4 m01 = texture(viewport_texture, uv + vec2(0f, -2f)*res);
+	vec4 m02 = texture(viewport_texture, uv + vec2(1f, -2f)*res);
+	vec4 m03 = texture(viewport_texture, uv + vec2(-2f, -1f)*res);
+	vec4 m04 = texture(viewport_texture, uv + vec2(-1f, -1f)*res);
+	vec4 m05 = texture(viewport_texture, uv + vec2(0f, -1f)*res);
+	vec4 m06 = texture(viewport_texture, uv + vec2(1f, -1f)*res);
+	vec4 m07 = texture(viewport_texture, uv + vec2(2f, -1f)*res);
+	vec4 m08 = texture(viewport_texture, uv + vec2(-2f, 0f)*res);
+	vec4 m09 = texture(viewport_texture, uv + vec2(-1f, 0f)*res);
+	vec4 m10 = texture(viewport_texture, uv + vec2(0f, 0f)*res);
+	vec4 m11 = texture(viewport_texture, uv + vec2(1f, 0f)*res);
+	vec4 m12 = texture(viewport_texture, uv + vec2(2f, 0f)*res);
+	vec4 m13 = texture(viewport_texture, uv + vec2(-2f, 1f)*res);
+	vec4 m14 = texture(viewport_texture, uv + vec2(-1f, 1f)*res);
+	vec4 m15 = texture(viewport_texture, uv + vec2(0f, 1f)*res);
+	vec4 m16 = texture(viewport_texture, uv + vec2(1f, 1f)*res);
+	vec4 m17 = texture(viewport_texture, uv + vec2(2f, 1f)*res);
+	vec4 m18 = texture(viewport_texture, uv + vec2(-1f, 2f)*res);
+	vec4 m19 = texture(viewport_texture, uv + vec2(0f, 2f)*res);
+	vec4 m20 = texture(viewport_texture, uv + vec2(1f, 2f)*res);
+	float d_10_9 = d(m10, m09);
+	float d_10_5 = d(m10, m05);
+	float d_10_11 = d(m10, m11);
+	float d_10_15 = d(m10, m15);
+	float d_10_14 = d(m10, m14);
+	float d_10_6 = d(m10, m06);
+	float d_4_8 = d(m04,  m08);
+	float d_4_1 = d(m04,  m01);
+	float d_9_5 = d(m09,  m05);
+	float d_9_15 = d(m09,  m15);
+	float d_9_3 = d(m09,  m03);
+	float d_5_11 = d(m05,  m11);
+	float d_5_0 = d(m05,  m00);
+	float d_10_4 = d(m10, m04);
+	float d_10_16 = d(m10, m16);
+	float d_6_12 = d(m06,  m12);
+	float d_6_1 = d(m06,  m01);
+	float d_11_15 = d(m11, m15);
+	float d_11_7 = d(m11, m07);
+	float d_5_2 = d(m05,  m02);
+	float d_14_8 = d(m14, m08);
+	float d_14_19 = d(m14, m19);
+	float d_15_18 = d(m15, m18);
+	float d_9_13 = d(m09,  m13);
+	float d_16_12 = d(m16, m12);
+	float d_16_19 = d(m16, m19);
+	float d_15_20 = d(m15, m20);
+	float d_15_17 = d(m15, m17);
+	
+	// Top Left Edge Detection Rule
+	if (sx%2 == 0 && sy%2 == 0) {
+		float a1 = (d_10_14 + d_10_6 + d_4_8  + d_4_1 + (4f * d_9_5));
+		float b1 = ( d_9_15 +  d_9_3 + d_5_11 + d_5_0 + (4f * d_10_4));
+		if (a1 < b1) {
+			vec4 new_pixel = (d_10_9 <= d_10_5) ? m09 : m05;
+			COLOR = mix(new_pixel, m10, .5);
+		} else {
+			COLOR = m10;
+		}
+	}
+
+	else if (sx%2 == 1 && sy%2 == 0) {
+		float a2 = (d_10_16 + d_10_4 + d_6_12 + d_6_1 + (4f * d_5_11));
+		float b2 = (d_11_15 + d_11_7 +  d_9_5 + d_5_2 + (4f * d_10_6));
+		if (a2 < b2) {
+			vec4 new_pixel= (d_10_5 <= d_10_11) ? m05 : m11;
+			COLOR = mix(new_pixel, m10, .5);
+		} else {
+			COLOR = m10;
+		}
+	}
+	
+	else if (sx%2 == 0 && sy%2 == 1) {
+		float a3 = (d_10_4 + d_10_16 +  d_14_8 + d_14_19 + (4f * d_9_15));
+		float b3 = ( d_9_5 +  d_9_13 + d_11_15 + d_15_18 + (4f * d_10_14));
+		if (a3 < b3) {
+			vec4 new_pixel= (d_10_9 <= d_10_15) ? m09 : m15;
+			COLOR = mix(new_pixel, m10, .5);
+		} else {
+			COLOR = m10;
+		}
+	}
+	
+	else if (sx%2 == 1 && sy%2 == 1) {
+		float a4 = (d_10_6 + d_10_14 + d_16_12 + d_16_19 + (4f * d_11_15));
+		float b4 = (d_9_15 + d_15_20 + d_15_17 +  d_5_11 + (4f * d_10_16));
+		if (a4 < b4) {
+			vec4 new_pixel= (d_10_11 <= d_10_15) ? m11 : m15;
+			COLOR = mix(new_pixel, m10, .5);
+		} else {
+			COLOR = m10;
+		}
+	}
+}"
+
+[sub_resource type="StreamTexture" id=2]
+load_path = "res://.import/test_image.png-766335652dc2c2de5b8cec86a2845a37.stex"
+
+[resource]
+shader = SubResource( 1 )
+shader_param/dispersion = 30.0
+shader_param/viewport_texture = SubResource( 2 )
